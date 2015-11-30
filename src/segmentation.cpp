@@ -238,7 +238,7 @@ double PixelSegmentation::reconstruction_error(const cv::Mat& image) {
     cv::Mat greyscale_image;
     cv::cvtColor(image, greyscale_image, CV_BGR2GRAY);
 
-    std::vector<int> colours;
+    std::vector<double> colours;
 
     // compute the average colour for each face.
     for(int label=1; label <= this->number_segments(); ++label) {
