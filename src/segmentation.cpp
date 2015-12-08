@@ -2,19 +2,21 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
+#include <iterator>
 #include <opencv2/imgproc/imgproc.hpp>
 
 // Segmentation::boundary_recall() {
 //     if
 // }
 
-PixelSegmentation::PixelSegmentation(int32_t* data, uchar* b_data, int32_t width, int32_t height) : segmentation_data(height, width, CV_32S, data), boundary_data(height, width, CV_8U, b_data) {
+PixelSegmentation::PixelSegmentation(int32_t* data, uchar* b_data, int32_t width, int32_t height) : segmentation_data(height, width, data), boundary_data(height, width, b_data) {
     this->height = height;
     this->width = width;
     PixelSegmentation::initialise_segments();
 }
 
-PixelSegmentation::PixelSegmentation(cv::Mat& data, cv::Mat& boundary_data) : segmentation_data(data), boundary_data(boundary_data) {
+PixelSegmentation::PixelSegmentation(cv::Mat_<int32_t>& data, cv::Mat_<uchar>& boundary_data) : segmentation_data(data), boundary_data(boundary_data) {
     this->height = data.rows;
     this->width = data.cols;
     PixelSegmentation::initialise_segments();   
@@ -42,8 +44,7 @@ void PixelSegmentation::initialise_segments() {
             int32_t label = segmentation_data.at<int32_t>(i,j);
             if(label==0) { std::cout << "ZERO @ " << i << "," << j << std::endl; continue; }
             PixelSegment& s = segments[label-1];
-            s.xs.push_back(j);
-            s.ys.push_back(i);
+            s.points.push_back(cv::Point(j,i));
             if(s.x1 < 0 or s.x1 > j) { s.x1 = j; }
             if(s.x2 < 0 or s.x2 < j) { s.x2 = j; }
             if(s.y1 < 0 or s.y1 > i) { s.y1 = i; }
@@ -56,7 +57,7 @@ void PixelSegmentation::initialise_segments() {
     // }
 }
 
-PixelSegmentation& PixelSegmentation::load_from_file(ifstream& labels_file) {
+PixelSegmentation PixelSegmentation::load_from_file(ifstream& labels_file) {
     // format: two int32s specifying width and height, followed by w*h int32s.
     int32_t* dims = new int32_t[2];
     labels_file.read((char*)dims, sizeof(int32_t)*2);
@@ -66,11 +67,15 @@ PixelSegmentation& PixelSegmentation::load_from_file(ifstream& labels_file) {
     uchar* bdata = new uchar[width*height];
     labels_file.read((char*)data, width*height*sizeof(int32_t));
     labels_file.read((char*)bdata, width*height*sizeof(uchar));
-    PixelSegmentation* p = new PixelSegmentation(data, bdata, width, height);
-    return *p;
+    cv::Mat_<int32_t> seg_mat = cv::Mat_<int32_t>(height, width, data).clone();
+    cv::Mat_<uchar> boundary_mat = cv::Mat_<uchar>(height, width, bdata).clone();
+    delete data;
+    delete bdata;
+    delete dims;
+    return PixelSegmentation(seg_mat, boundary_mat);
 }
 
-cv::Mat PixelSegmentation::get_boundary_pixels() const {
+cv::Mat_<uchar> PixelSegmentation::get_boundary_pixels() const {
 //     cv::Mat image = cv::Mat(this->height, this->width, CV_8U, 0.0);
 //     for(int i = 0; i < this->segmentation_data.rows; ++i) {
 //         for(int j = 0; j < this->segmentation_data.cols; ++j) {
@@ -95,8 +100,8 @@ cv::Mat PixelSegmentation::get_boundary_pixels() const {
 
 double PixelSegmentation::boundary_recall(PixelSegmentation& ground_truth, int epsilon) {
     int true_pos = 0, false_neg = 0;
-    cv::Mat ground_truth_boundaries = ground_truth.get_boundary_pixels();
-    cv::Mat our_boundaries = this->get_boundary_pixels();
+    cv::Mat_<uchar> ground_truth_boundaries = ground_truth.get_boundary_pixels();
+    cv::Mat_<uchar> our_boundaries = this->get_boundary_pixels();
     for(int p_y = 0; p_y < ground_truth_boundaries.rows; ++p_y) {
         const uchar* Mi = ground_truth_boundaries.ptr(p_y);
         for(int p_x = 0; p_x < ground_truth_boundaries.cols; ++p_x) {
@@ -104,7 +109,7 @@ double PixelSegmentation::boundary_recall(PixelSegmentation& ground_truth, int e
                 // look in area about (p_y, p_x)...
                 cv::Range y_range = cv::Range(max(p_y-epsilon,0), min(p_y+epsilon+1, this->height));
                 cv::Range x_range = cv::Range(max(p_x-epsilon,0), min(p_x+epsilon+1, this->width));
-                cv::Mat test_area = our_boundaries(y_range, x_range);
+                auto test_area = our_boundaries(y_range, x_range);
                 auto res = cv::countNonZero(test_area);
                 if(res) {
                     //std::cout << "Increment." << std::endl;
@@ -129,21 +134,17 @@ bool PixelSegment::bbox_intersect(PixelSegment& other) {
     return (this->x1 <= other.x2 and this->x2 >= other.x1 and this->y1 <= other.y2 and this->y2 >= other.y1);
 }
 
+bool comparePoints(const cv::Point & a, const cv::Point & b) {
+    return ( a.x<b.x && a.y<b.y );
+}
+
 intersection_result PixelSegment::intersection(PixelSegment& other) {
-    int area_in = 0, area_out = 0;
-    for(int y = this->y1; y<this->y2; ++y) {
-        for(int x = this->x1; x<this->x2; ++x) {
-            if(this->segmentation.segmentation_data.at<int32_t>(y,x) == this->label) {
-                if(other.segmentation.segmentation_data.at<int32_t>(y,x) == other.label) {
-                    ++area_in;
-                }
-                else {
-                    ++area_out;
-                }
-            }
-        }
-    }
-    return (intersection_result){.area_out=area_out, .area_in=area_in};
+    vector<cv::Point> points_intersection;
+    vector<cv::Point> points_outside;
+
+    std::set_intersection(this->points.begin(), this->points.end(), other.points.begin(), other.points.end(), back_inserter(points_intersection), comparePoints);
+    std::set_difference(this->points.begin(), this->points.end(), points_intersection.begin(), points_intersection.end(), back_inserter(points_outside), comparePoints);
+    return (intersection_result){.area_out=int(points_outside.size()), .area_in=int(points_intersection.size())};
 
 }
 
@@ -168,10 +169,10 @@ double PixelSegmentation::undersegmentation_error(PixelSegmentation& ground_trut
 
 double PixelSegment::perimeter() {
     int total = 0;
-    auto len = this->xs.size();
+    auto len = this->points.size();
     for(int i = 0; i < len; ++i) {
         // is it a boundary point?
-        cv::Point point(this->xs[i], this->ys[i]);
+        cv::Point point = this->points[i];
         cv::Point diffs[4] = {cv::Point(1,0),cv::Point(-1,0),cv::Point(0,1),cv::Point(0,-1)};
         for(int j=0; j<4; ++j) {
             cv::Point p = point + diffs[j];
@@ -186,7 +187,7 @@ double PixelSegment::perimeter() {
     return (double)total;
 }
 
-double PixelSegment::area() { return this->xs.size(); }
+double PixelSegment::area() { return this->points.size(); }
 
 double PixelSegmentation::achievable_segmentation_accuracy(PixelSegmentation& ground_truth) {
     int total = 0;

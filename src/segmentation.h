@@ -38,8 +38,7 @@ class PixelSegment {
         int x2;
         int y1;
         int y2;
-        vector<int> xs;
-        vector<int> ys;
+        vector<cv::Point> points;
         double perimeter();
         double area();
         bool bbox_intersect(PixelSegment& other);
@@ -49,7 +48,7 @@ class PixelSegment {
 
 class PixelSegmentation : public Segmentation {
     public:
-        static PixelSegmentation& load_from_file(ifstream& file);
+        static PixelSegmentation load_from_file(ifstream& file);
         void output_to_file(ofstream file);
         double reconstruction_error(const cv::Mat& image);
         double compactness();
@@ -57,18 +56,18 @@ class PixelSegmentation : public Segmentation {
         double boundary_recall(PixelSegmentation& ground_truth, int epsilon);
         double undersegmentation_error(PixelSegmentation& ground_truth);
         double achievable_segmentation_accuracy(PixelSegmentation& ground_truth);
-        cv::Mat get_boundary_pixels() const;
+        cv::Mat_<uchar> get_boundary_pixels() const;
         void initialise_segments();
         void compute_mean(cv::Mat& image, cv::Mat& output);
 
         PixelSegmentation(int32_t* data, uchar* b_data, int width, int height);
-        PixelSegmentation(cv::Mat& data, cv::Mat& boundary_data);
+        PixelSegmentation(cv::Mat_<int32_t>& data, cv::Mat_<uchar>& boundary_data);
         PixelSegmentation();
     
         unsigned long number_segments();
     
-        cv::Mat segmentation_data;
-        cv::Mat boundary_data;
+        cv::Mat_<int32_t> segmentation_data;
+        cv::Mat_<uchar> boundary_data;
         vector<PixelSegment> segments;
 
 };

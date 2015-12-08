@@ -12,6 +12,7 @@
 
 #include "donald-slic.h"
 #include "seeds.h"
+#include "coursetofine.h"
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -39,8 +40,11 @@ PixelSegmentation run_segmentation(string& algorithm_name, cv::Mat& image, int n
     else if (algorithm_name == "seeds") {
         return run_seeds(image, number_superpixels);
     }
+    else if (algorithm_name == "coursetofine") {
+        return run_coursetofine(image, number_superpixels);
+    }
     else {
-        throw invalid_argument(algorithm_name + " is not implemented. Possible values are slic, seeds.");
+        throw invalid_argument(algorithm_name + " is not implemented. Possible values are slic, seeds, coursetofine.");
     }
 }
 
@@ -82,7 +86,7 @@ int main(int ac, char* av[]) {
         fs::path bsd_path = fs::path(vm["bsd-path"].as<string>());
         assert(fs::is_directory(bsd_path));
         
-        vector<string> possible_algorithms = {"slic", "seeds"};
+        vector<string> possible_algorithms = {"slic", "seeds", "coursetofine"};
         bool load_from_files = vm.count("input-dat-directory") > 0;
         string input_dat_directory = "";
         if (load_from_files) {
@@ -119,7 +123,7 @@ int main(int ac, char* av[]) {
         csv.open(output_filename, ios::out);
         csv << "Name\tNumber superpixels\tBR\tASA\tCO\tRE\tUE\n";
     
-        cout << "Running on 500 test images..." << endl;
+        cout << "Running on " << paths.size() << " test images..." << endl;
         boost::progress_display show_progress( paths.size() );
         
         for(auto i = paths.begin(); i != paths.end(); ++i) {
@@ -145,9 +149,15 @@ int main(int ac, char* av[]) {
                 ifstream gtfile;
                 gtfile.open(*gt_p);
                 PixelSegmentation gt = PixelSegmentation::load_from_file(gtfile);
+                //gtfile.close();
                 brs.push_back(seg.boundary_recall(gt, 2));
                 asas.push_back(seg.achievable_segmentation_accuracy(gt));
                 ues.push_back(seg.undersegmentation_error(gt));
+                
+                cv::Mat means_image(image.rows, image.cols, image.type());
+                gt.compute_mean(image, means_image);
+                
+                imwrite((bsd_path / basename).string() + "_" + to_string(gt_p - gts.begin()) + "_means.png", means_image);
             }
                               
             double best_br = *std::max_element(brs.begin(), brs.end());

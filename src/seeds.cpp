@@ -48,11 +48,11 @@ PixelSegmentation run_seeds(cv::Mat& image, int num_superpixels) {
     //    auto seeds = createSuperpixelSEEDS(w, h, 3, atoi(argv[2]));
     seeds->iterate(lab_image);
     
-    Mat seedsLabels;
+    Mat_<int32_t> seedsLabels;
     seeds->getLabels(seedsLabels);
     seedsLabels += 1;
     
-    Mat seedsContours;
+    Mat_<uchar> seedsContours;
     seeds->getLabelContourMask(seedsContours);
     seedsContours /= 255;
     return PixelSegmentation(seedsLabels, seedsContours);
