@@ -1,13 +1,13 @@
 //
-//  run-coursetofine.h
+//  run-coarsetofine.h
 //  superpixel-benchmarks
 //
 //  Created by Donald S. F. Harvey on 27/11/2015.
 //
 //
 
-#ifndef run_coursetofine_h
-#define run_coursetofine_h
+#ifndef run_coarsetofine_h
+#define run_coarsetofine_h
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -15,10 +15,10 @@
 #include <fstream>
 #include <iostream>
 #include "segmentation.h"
-#include "contrib/coursetofine/segengine.h"
+#include "contrib/coarsetofine/segengine.h"
 
 using namespace cv;
 
-PixelSegmentation run_coursetofine(cv::Mat& image, int num_superpixels);
+PixelSegmentation run_coarsetofine(cv::Mat& image, int num_superpixels);
 
-#endif /* run_coursetofine_h */
+#endif /* run_coarsetofine_h */

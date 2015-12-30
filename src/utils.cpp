@@ -1,6 +1,7 @@
 #include "utils.h"
 
 using namespace cv; 
+
 Mat generate_boundaries(Mat& labels) {
     // from slic implementation.
 

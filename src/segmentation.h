@@ -49,7 +49,7 @@ class PixelSegment {
 class PixelSegmentation : public Segmentation {
     public:
         static PixelSegmentation load_from_file(ifstream& file);
-        void output_to_file(ofstream file);
+        void output_to_file(ofstream& out_file);
         double reconstruction_error(const cv::Mat& image);
         double compactness();
         double boundary_recall(PixelSegmentation& ground_truth);
@@ -74,8 +74,8 @@ class PixelSegmentation : public Segmentation {
 
 class MeshSegmentation : Segmentation {
     public:
-        void load_from_file(ifstream file);
-        void output_to_file(ofstream file);
+        void load_from_file(ifstream& file);
+        void output_to_file(ofstream& out_file);
 
         MeshSegmentation();
 

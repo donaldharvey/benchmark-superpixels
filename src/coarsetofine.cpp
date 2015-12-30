@@ -1,9 +1,9 @@
-#include "coursetofine.h"
+#include "coarsetofine.h"
 #include "utils.h"
 
 using namespace cv;
 
-PixelSegmentation run_coursetofine(cv::Mat& image, int num_superpixels) {
+PixelSegmentation run_coarsetofine(cv::Mat& image, int num_superpixels) {
     SPSegmentationParameters params;
     params.superpixelNum = num_superpixels;
 

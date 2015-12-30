@@ -79,8 +79,8 @@ void PixelSegmentation::output_to_file(ofstream& out_file) {
     uchar* contoursOut = NULL;
     int32_t* regionsOut = NULL;
     
-    contoursOut = new uchar[image.cols * image.rows];
-    regionsOut = new int32_t[image.cols * image.rows];
+    contoursOut = new uchar[this->width * this->height];
+    regionsOut = new int32_t[this->width * this->height];
 
     for (int i = 0; i < this->height; i++) {
         for (int j = 0; j < this->width; j++) {
