@@ -75,6 +75,33 @@ PixelSegmentation PixelSegmentation::load_from_file(ifstream& labels_file) {
     return PixelSegmentation(seg_mat, boundary_mat);
 }
 
+void PixelSegmentation::output_to_file(ofstream& out_file) {
+    uchar* contoursOut = NULL;
+    int32_t* regionsOut = NULL;
+    
+    contoursOut = new uchar[image.cols * image.rows];
+    regionsOut = new int32_t[image.cols * image.rows];
+
+    for (int i = 0; i < this->height; i++) {
+        for (int j = 0; j < this->width; j++) {
+            contoursOut[i*this->width + j] = this->boundary_data.at<uchar>(i, j);
+            regionsOut[i*this->width + j] = int32_t(this->segmentation_data.at<int>(i, j));
+        }
+    }
+
+    out_file.write((char*)&(this->width), sizeof(int32_t));
+    out_file.write((char*)&(this->height), sizeof(int32_t));
+    
+    for (int i=0; i < (this->width) * (this->height); i++) {
+        out_file.write((char*)&(regionsOut[i]), sizeof(int32_t));
+    }
+    
+    for (int i=0; i < (this->width) * (this->height); ++i) {
+        out_file.write((char*)&(contoursOut[i]), sizeof(uchar));
+    }
+    out_file.close();
+}
+
 cv::Mat_<uchar> PixelSegmentation::get_boundary_pixels() const {
 //     cv::Mat image = cv::Mat(this->height, this->width, CV_8U, 0.0);
 //     for(int i = 0; i < this->segmentation_data.rows; ++i) {
