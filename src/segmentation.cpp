@@ -4,6 +4,8 @@
 #include <iostream>
 #include <algorithm>
 #include <iterator>
+#include <unordered_set>
+#include "utils.h"
 #include <opencv2/imgproc/imgproc.hpp>
 
 // Segmentation::boundary_recall() {
@@ -102,27 +104,47 @@ void PixelSegmentation::output_to_file(ofstream& out_file) {
     out_file.close();
 }
 
+
+
 cv::Mat_<uchar> PixelSegmentation::get_boundary_pixels() const {
-//     cv::Mat image = cv::Mat(this->height, this->width, CV_8U, 0.0);
-//     for(int i = 0; i < this->segmentation_data.rows; ++i) {
-//         for(int j = 0; j < this->segmentation_data.cols; ++j) {
-//             int32_t label = this->segmentation_data.at<int32_t>(i,j);
-//             int dy8[8] = {-1, 0, 1, 0, -1, -1, 1, 1};
-//             int dx8[8] = {0, 1, 0, -1, -1, 1, -1, 1};
-//             for(int di=0; di<8;++di) {
-//                 int x = j + dx8[di], y = i + dy8[di];
-//                 if(x >= 0 and x < this->width and y >= 0 and y < this->height) {
-//                     if(this->segmentation_data.at<int32_t>(y,x) != label) {
-//                         // it's a boundary pixel
-//                         image.at<uchar>(i, j) = (uchar)1;
-//                         break;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return image;
-    return this->boundary_data;
+     return this->boundary_data;
+
+//    // do the initial step
+//    cv::Mat_<uchar> image = cv::Mat_<uchar>(this->height, this->width, 0.0);
+//    for(int i = 0; i < this->segmentation_data.rows; ++i) {
+//        for(int j = 0; j < this->segmentation_data.cols; ++j) {
+//            int32_t px = this->segmentation_data(i,j);
+//            // check if last row
+//            if (i + 1 == this->segmentation_data.rows) {
+//                if (j + 1 == this->segmentation_data.cols) {
+//                    image(i,j) = 0;
+//                }
+//                else {
+//                    image(i,j) = (px != this->segmentation_data(i, j+1));
+//                }
+//            }
+//            else {
+//                if (j + 1 == this->segmentation_data.cols) {
+//                    image(i,j) = (px != this->segmentation_data(i+1, j));
+//                }
+//                else {
+//                    uint32_t pixel_value = (px != this->segmentation_data(i+1,j) || 
+//                                            px != this->segmentation_data(i,j+1) || 
+//                                            px != this->segmentation_data(i+1,j+1));
+//                    image(i,j) = pixel_value;
+//                }
+//            }
+//        }
+//    }
+//    cv::Mat outPreThin;
+//    cv::Mat outPostThin;
+//    cv::cvtColor(image*255, outPreThin, CV_GRAY2BGR);
+//    imwrite("outPreThin.png", outPreThin);
+//    // now thin.
+//    image = thin_boundary_matrix(image);
+//    cv::cvtColor(image*255, outPostThin, CV_GRAY2BGR);
+//    imwrite("outPostThin.png", outPostThin);
+//    return image;
 }
 
 double PixelSegmentation::boundary_recall(PixelSegmentation& ground_truth, int epsilon) {
@@ -165,14 +187,38 @@ bool comparePoints(const cv::Point & a, const cv::Point & b) {
     return ( a.x<b.x && a.y<b.y );
 }
 
-intersection_result PixelSegment::intersection(PixelSegment& other) {
+template <class T>
+inline void hash_combine(std::size_t& seed, const T& v)
+{
+    std::hash<T> hasher;
+    seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
+
+namespace std {
+    template <> struct hash<cv::Point> {
+        size_t operator()(const cv::Point & p) const {
+            size_t seed = 0;
+            hash_combine(seed, p.x);
+            hash_combine(seed, p.y);
+            return seed;
+        }
+    };
+}
+
+intersection_result PixelSegment::intersection_and_diff(PixelSegment& other) {
     vector<cv::Point> points_intersection;
     vector<cv::Point> points_outside;
 
-    std::set_intersection(this->points.begin(), this->points.end(), other.points.begin(), other.points.end(), back_inserter(points_intersection), comparePoints);
-    std::set_difference(this->points.begin(), this->points.end(), points_intersection.begin(), points_intersection.end(), back_inserter(points_outside), comparePoints);
-    return (intersection_result){.area_out=int(points_outside.size()), .area_in=int(points_intersection.size())};
+    int in = 0, out = 0;
 
+    unordered_set<cv::Point> s(this->points.begin(), this->points.end());
+    for(auto i = other.points.begin(); i != other.points.end(); i++) {
+        if (s.find(*i) != s.end())
+            in++;
+        else
+            out++;
+    }
+    return (intersection_result){.area_out=out, .area_in=in};
 }
 
 double PixelSegmentation::undersegmentation_error(PixelSegmentation& ground_truth) {
@@ -185,7 +231,7 @@ double PixelSegmentation::undersegmentation_error(PixelSegmentation& ground_trut
             if (!this_seg.bbox_intersect(gt_seg)) {
                 continue; 
             }
-            intersection_result result = this_seg.intersection(gt_seg);
+            intersection_result result = this_seg.intersection_and_diff(gt_seg);
             if(result.area_in) {
                 total += min(result.area_in, result.area_out);
             }
@@ -226,7 +272,7 @@ double PixelSegmentation::achievable_segmentation_accuracy(PixelSegmentation& gr
         for(auto j = ground_truth.segments.begin(); j != ground_truth.segments.end(); j++) {
             PixelSegment gt_seg = *j;
             if (!this_seg.bbox_intersect(gt_seg)) { continue; }
-            intersection_result result = this_seg.intersection(gt_seg);
+            intersection_result result = this_seg.intersection_and_diff(gt_seg);
             if (result.area_in > max) {
                 max = result.area_in;
             }

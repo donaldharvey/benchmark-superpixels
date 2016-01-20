@@ -5,3 +5,4 @@
 using namespace cv; 
 
 Mat generate_boundaries(Mat& labels);
+Mat_<uchar> thin_boundary_matrix(Mat_<uchar> mat);

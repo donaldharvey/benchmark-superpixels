@@ -42,7 +42,7 @@ class PixelSegment {
         double perimeter();
         double area();
         bool bbox_intersect(PixelSegment& other);
-        intersection_result intersection(PixelSegment& other);
+        intersection_result intersection_and_diff(PixelSegment& other);
         PixelSegment(PixelSegmentation& seg);
 };
 
