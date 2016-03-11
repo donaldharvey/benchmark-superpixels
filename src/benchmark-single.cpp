@@ -15,28 +15,28 @@ namespace po = boost::program_options;
 
 using namespace std;
 
-PixelSegmentation run_segmentation(string& algorithm_name, cv::Mat& image, int number_superpixels, map<string, string>& algo_opts) {
-    if (algorithm_name == "slic") {
-        if (algo_opts.count("compactness_weight")) {
-            return run_slic(image, number_superpixels, stoi(algo_opts["compactness_weight"]));
-        }
-        return run_slic(image, number_superpixels, 10);
-    }
-    else if (algorithm_name == "seeds") {
-        return run_seeds(image, number_superpixels);
-    }
-    else if (algorithm_name == "coarsetofine") {
-        return run_coarsetofine(image, number_superpixels);
-    }
-    else {
-        throw invalid_argument(algorithm_name + " is not implemented. Possible values are slic, seeds, coarsetofine.");
-    }
-}
+// PixelSegmentation run_segmentation(string& algorithm_name, cv::Mat& image, int number_superpixels, map<string, string>& algo_opts) {
+//     if (algorithm_name == "slic") {
+//         if (algo_opts.count("compactness_weight")) {
+//             return run_slic(image, number_superpixels, stoi(algo_opts["compactness_weight"]));
+//         }
+//         return run_slic(image, number_superpixels, 10);
+//     }
+//     else if (algorithm_name == "seeds") {
+//         return run_seeds(image, number_superpixels);
+//     }
+//     else if (algorithm_name == "coarsetofine") {
+//         return run_coarsetofine(image, number_superpixels);
+//     }
+//     else {
+//         throw invalid_argument(algorithm_name + " is not implemented. Possible values are slic, seeds, coarsetofine.");
+//     }
+// }
 
-PixelSegmentation run_segmentation(string& algorithm_name, cv::Mat& image, int number_superpixels) {
-    map<string, string> algo_opts = map<string, string>();
-    return run_segmentation(algorithm_name, image, number_superpixels, algo_opts);
-}
+// PixelSegmentation run_segmentation(string& algorithm_name, cv::Mat& image, int number_superpixels) {
+//     map<string, string> algo_opts = map<string, string>();
+//     return run_segmentation(algorithm_name, image, number_superpixels, algo_opts);
+// }
 
 struct bench_res {
     unsigned long number_segments;
@@ -76,7 +76,7 @@ bench_res run_bench(PixelSegmentation& seg, cv::Mat& image, string& gt_path) {
 
 int main(int ac, char* av[]) {
     int number_superpixels;
-    string algorithm_name;
+    // string algorithm_name;
     string output_filename;
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -84,7 +84,7 @@ int main(int ac, char* av[]) {
         ("ground-truth,g", po::value<string>(), "ground truth dat path")
         ("input-image", po::value<string>(), "input image path")
         ("number-superpixels,n", po::value<int>(&number_superpixels)->default_value(1000), "requested number of superpixels to input to the segmentation algorithm")
-        ("algorithm", po::value<string>(&algorithm_name), "the name of the algorithm to use. possible values: slic, seeds")
+        // ("algorithm", po::value<string>(&algorithm_name), "the name of the algorithm to use. possible values: slic, seeds")
         ("input", po::value<string>(), "location of input dat")
     ;
         
@@ -111,7 +111,7 @@ int main(int ac, char* av[]) {
 
 
     cv::Mat image = cv::imread(vm["input-image"].as<string>(), CV_LOAD_IMAGE_COLOR);
-    PixelSegmentation seg = load_from_png ? PixelSegmentation::load_from_png(png_file) : run_segmentation(algorithm_name, image, number_superpixels);
+    PixelSegmentation seg = load_from_png ? PixelSegmentation::load_from_png(png_file);
 
     string gt_path = vm["ground-truth"].as<string>();
 
