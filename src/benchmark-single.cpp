@@ -40,38 +40,35 @@ PixelSegmentation run_segmentation(string& algorithm_name, cv::Mat& image, int n
 
 struct bench_res {
     unsigned long number_segments;
-    double br;
+    double br2;
+    double br1;
+    double br0;
     double asa;
     double compactness;
     double reconstruction_error;
     double ue;
 };
 
-bench_res run_bench(PixelSegmentation& seg, cv::Mat& image, vector<string>& gts) {
-    vector<double> brs;
-    vector<double> asas;
-    vector<double> ues;
-    for(auto gt_p = gts.begin(); gt_p != gts.end(); ++gt_p) {
-        ifstream gtfile;
-        gtfile.open(*gt_p);
-        PixelSegmentation gt = PixelSegmentation::load_from_file(gtfile);
-        //gtfile.close();
-        brs.push_back(seg.boundary_recall(gt, 2));
-        asas.push_back(seg.achievable_segmentation_accuracy(gt));
-        ues.push_back(seg.undersegmentation_error(gt));
-    }
-                              
-    double best_br = *std::max_element(brs.begin(), brs.end());
-    double best_asa = *std::max_element(asas.begin(), asas.end());
-    double best_ue = *std::min_element(ues.begin(), ues.end());
-
+bench_res run_bench(PixelSegmentation& seg, cv::Mat& image, string& gt_path) {
+    ifstream gtfile;
+    gtfile.open(gt_path);
+    PixelSegmentation gt = PixelSegmentation::load_from_file(gtfile);
+    //gtfile.close();
+    double br2 = seg.boundary_recall(gt, 2);
+    double br1 = seg.boundary_recall(gt, 1);
+    double br0 = seg.boundary_recall(gt, 0);
+    double asa = seg.achievable_segmentation_accuracy(gt);
+    double ue = seg.undersegmentation_error(gt);
+    
     bench_res res = {
         .number_segments = seg.number_segments(), 
-        .br = best_br, 
-        .asa = best_asa, 
-        .compactness = seg.compactness(), 
+        .br2 = br2,
+        .br1 = br1,
+        .br0 = br0,
+        .asa = asa,
+        .compactness = seg.compactness(),
         .reconstruction_error = seg.reconstruction_error(image),
-        .ue = best_ue
+        .ue = ue
     };
 
     return res;
@@ -84,7 +81,7 @@ int main(int ac, char* av[]) {
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help", "produce help message")
-        ("ground-truth,g", po::value< vector<string> >(), "ground truth dat paths")
+        ("ground-truth,g", po::value<string>(), "ground truth dat path")
         ("input-image", po::value<string>(), "input image path")
         ("number-superpixels,n", po::value<int>(&number_superpixels)->default_value(1000), "requested number of superpixels to input to the segmentation algorithm")
         ("algorithm", po::value<string>(&algorithm_name), "the name of the algorithm to use. possible values: slic, seeds")
@@ -106,23 +103,27 @@ int main(int ac, char* av[]) {
         return 1;
     }
        
-    bool load_from_dat; 
-    ifstream dat_file;
-    if( (load_from_dat = vm.count("input") > 0) ) {
-        dat_file.open(vm["input"].as<string>());
+    bool load_from_png;
+    string png_file;
+    if( (load_from_png = vm.count("input") > 0) ) {
+        png_file = vm["input"].as<string>();
     }
 
 
     cv::Mat image = cv::imread(vm["input-image"].as<string>(), CV_LOAD_IMAGE_COLOR);
-    PixelSegmentation seg = load_from_dat ? PixelSegmentation::load_from_file(dat_file) : run_segmentation(algorithm_name, image, number_superpixels);
+    PixelSegmentation seg = load_from_png ? PixelSegmentation::load_from_png(png_file) : run_segmentation(algorithm_name, image, number_superpixels);
 
-    vector<string> gt_paths = vm["ground-truth"].as< vector<string> >();
+    string gt_path = vm["ground-truth"].as<string>();
 
-    bench_res res = run_bench(seg, image, gt_paths);
+    bench_res res = run_bench(seg, image, gt_path);
+    
+    cout.precision(10);
 
     cout << "{\n"
     << "    \"number_segments\": " << res.number_segments << ",\n"
-    << "    \"br\": " << res.br << ",\n"
+    << "    \"br2\": " << res.br2 << ",\n"
+    << "    \"br1\": " << res.br1 << ",\n"
+    << "    \"br0\": " << res.br0 << ",\n"
     << "    \"asa\": " << res.asa << ",\n"
     << "    \"compactness\": " << res.compactness << ",\n"
     << "    \"reconstruction_error\": " << res.reconstruction_error << ",\n"

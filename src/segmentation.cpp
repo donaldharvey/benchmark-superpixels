@@ -8,9 +8,81 @@
 #include "utils.h"
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include <opencv2/highgui/highgui.hpp> // deleteme
+
 // Segmentation::boundary_recall() {
 //     if
 // }
+
+Mat3d convert_rgb_to_lab(const Mat& img)
+{
+    const int RGB2LABCONVERTER_XYZ_TABLE_SIZE = 1024;
+    // CIE standard parameters
+    const double epsilon = 0.008856;
+    const double kappa = 903.3;
+    // Reference white
+    const double referenceWhite[3] = { 0.950456, 1.0, 1.088754 };
+    /// Maximum values
+    const double maxXYZValues[3] = { 0.95047, 1.0, 1.08883 };
+    
+    vector<float> sRGBGammaCorrections(256);
+    for (int pixelValue = 0; pixelValue < 256; ++pixelValue) {
+        double normalizedValue = pixelValue / 255.0;
+        double transformedValue = (normalizedValue <= 0.04045) ? normalizedValue / 12.92 : pow((normalizedValue + 0.055) / 1.055, 2.4);
+        
+        sRGBGammaCorrections[pixelValue] = transformedValue;
+    }
+    
+    int tableSize = RGB2LABCONVERTER_XYZ_TABLE_SIZE;
+    vector<double> xyzTableIndexCoefficients(3);
+    xyzTableIndexCoefficients[0] = (tableSize - 1) / maxXYZValues[0];
+    xyzTableIndexCoefficients[1] = (tableSize - 1) / maxXYZValues[1];
+    xyzTableIndexCoefficients[2] = (tableSize - 1) / maxXYZValues[2];
+    
+    vector<vector<float> > fXYZConversions(3);
+    for (int xyzIndex = 0; xyzIndex < 3; ++xyzIndex) {
+        fXYZConversions[xyzIndex].resize(tableSize);
+        double stepValue = maxXYZValues[xyzIndex] / tableSize;
+        for (int tableIndex = 0; tableIndex < tableSize; ++tableIndex) {
+            double originalValue = stepValue*tableIndex;
+            double normalizedValue = originalValue / referenceWhite[xyzIndex];
+            double transformedValue = (normalizedValue > epsilon) ? pow(normalizedValue, 1.0 / 3.0) : (kappa*normalizedValue + 16.0) / 116.0;
+            
+            fXYZConversions[xyzIndex][tableIndex] = transformedValue;
+        }
+    }
+    
+    Mat3d result = Mat3d(img.rows, img.cols);
+    
+    for (int y = 0; y < img.rows; ++y) {
+        for (int x = 0; x < img.cols; ++x) {
+            const Vec3b& rgbColor = img.at<Vec3b>(y, x);
+            Vec3d& labColor = result(y, x);
+            
+            float correctedR = sRGBGammaCorrections[rgbColor[2]];
+            float correctedG = sRGBGammaCorrections[rgbColor[1]];
+            float correctedB = sRGBGammaCorrections[rgbColor[0]];
+            float xyzColor[3];
+            
+            xyzColor[0] = correctedR*0.4124564f + correctedG*0.3575761f + correctedB*0.1804375f;
+            xyzColor[1] = correctedR*0.2126729f + correctedG*0.7151522f + correctedB*0.0721750f;
+            xyzColor[2] = correctedR*0.0193339f + correctedG*0.1191920f + correctedB*0.9503041f;
+            
+            int tableIndexX = static_cast<int>(xyzColor[0] * xyzTableIndexCoefficients[0] + 0.5);
+            int tableIndexY = static_cast<int>(xyzColor[1] * xyzTableIndexCoefficients[1] + 0.5);
+            int tableIndexZ = static_cast<int>(xyzColor[2] * xyzTableIndexCoefficients[2] + 0.5);
+            
+            float fX = fXYZConversions[0][tableIndexX];
+            float fY = fXYZConversions[1][tableIndexY];
+            float fZ = fXYZConversions[2][tableIndexZ];
+            
+            labColor[0] = 116.0*fY - 16.0;
+            labColor[1] = 500.0*(fX - fY);
+            labColor[2] = 200.0*(fY - fZ);
+        }
+    }
+    return result;
+}
 
 PixelSegmentation::PixelSegmentation(int32_t* data, uchar* b_data, int32_t width, int32_t height) : segmentation_data(height, width, data), boundary_data(height, width, b_data) {
     this->height = height;
@@ -21,7 +93,7 @@ PixelSegmentation::PixelSegmentation(int32_t* data, uchar* b_data, int32_t width
 PixelSegmentation::PixelSegmentation(cv::Mat_<int32_t>& data, cv::Mat_<uchar>& boundary_data) : segmentation_data(data), boundary_data(boundary_data) {
     this->height = data.rows;
     this->width = data.cols;
-    PixelSegmentation::initialise_segments();   
+    PixelSegmentation::initialise_segments();
 }
 
 PixelSegmentation::PixelSegmentation() {}
@@ -59,6 +131,15 @@ void PixelSegmentation::initialise_segments() {
     // }
 }
 
+PixelSegmentation PixelSegmentation::load_from_png(string& path) {
+    // format: two int32s specifying width and height, followed by w*h int32s.
+    cv::Mat input = cv::imread(path, CV_LOAD_IMAGE_GRAYSCALE) + 1;
+    cv::Mat_<int32_t> seg_mat = input;
+    cv::Mat_<uchar> b = generate_boundary_mat(seg_mat);
+    b = thin_boundary_matrix(b);
+    return PixelSegmentation(seg_mat, b);
+}
+
 PixelSegmentation PixelSegmentation::load_from_file(ifstream& labels_file) {
     // format: two int32s specifying width and height, followed by w*h int32s.
     int32_t* dims = new int32_t[2];
@@ -77,37 +158,52 @@ PixelSegmentation PixelSegmentation::load_from_file(ifstream& labels_file) {
     return PixelSegmentation(seg_mat, boundary_mat);
 }
 
-void PixelSegmentation::output_to_file(ofstream& out_file) {
-    uchar* contoursOut = NULL;
-    int32_t* regionsOut = NULL;
-    
-    contoursOut = new uchar[this->width * this->height];
-    regionsOut = new int32_t[this->width * this->height];
+//void PixelSegmentation::output_to_file(ofstream& out_file) {
+//    uchar* contoursOut = NULL;
+//    int32_t* regionsOut = NULL;
+//    
+//    contoursOut = new uchar[this->width * this->height];
+//    regionsOut = new int32_t[this->width * this->height];
+//
+//    for (int i = 0; i < this->height; i++) {
+//        for (int j = 0; j < this->width; j++) {
+//            contoursOut[i*this->width + j] = this->boundary_data.at<uchar>(i, j);
+//            regionsOut[i*this->width + j] = int32_t(this->segmentation_data.at<int>(i, j));
+//        }
+//    }
+//
+//    out_file.write((char*)&(this->width), sizeof(int32_t));
+//    out_file.write((char*)&(this->height), sizeof(int32_t));
+//    
+//    for (int i=0; i < (this->width) * (this->height); i++) {
+//        out_file.write((char*)&(regionsOut[i]), sizeof(int32_t));
+//    }
+//    
+//    for (int i=0; i < (this->width) * (this->height); ++i) {
+//        out_file.write((char*)&(contoursOut[i]), sizeof(uchar));
+//    }
+//    out_file.close();
+//}
 
-    for (int i = 0; i < this->height; i++) {
-        for (int j = 0; j < this->width; j++) {
-            contoursOut[i*this->width + j] = this->boundary_data.at<uchar>(i, j);
-            regionsOut[i*this->width + j] = int32_t(this->segmentation_data.at<int>(i, j));
-        }
-    }
+const inline int32_t PixelSegmentation::label_at(int i, int j) {
+    return get_label_at(this->segmentation_data, i, j);
+}
 
-    out_file.write((char*)&(this->width), sizeof(int32_t));
-    out_file.write((char*)&(this->height), sizeof(int32_t));
-    
-    for (int i=0; i < (this->width) * (this->height); i++) {
-        out_file.write((char*)&(regionsOut[i]), sizeof(int32_t));
-    }
-    
-    for (int i=0; i < (this->width) * (this->height); ++i) {
-        out_file.write((char*)&(contoursOut[i]), sizeof(uchar));
-    }
-    out_file.close();
+cv::Mat_<uchar> PixelSegmentation::get_boundary_pixels() const {
+    return this->boundary_data;
+    // cv::Mat_<uchar> image = generate_boundary_mat(this->segmentation_data);
+    // cv::Mat outPreThin;
+    // cv::Mat outPostThin;
+    // cv::cvtColor(image*255, outPreThin, CV_GRAY2BGR);
+    // // imwrite("outPreThin.png", outPreThin);
+    // // now thin.
+    // image = thin_boundary_matrix(image);
+    // cv::cvtColor(image*255, outPostThin, CV_GRAY2BGR);
+    // // imwrite("outPostThin.png", outPostThin);
+    // return image;
 }
 
 
-
-cv::Mat_<uchar> PixelSegmentation::get_boundary_pixels() const {
-     return this->boundary_data;
 
 //    // do the initial step
 //    cv::Mat_<uchar> image = cv::Mat_<uchar>(this->height, this->width, 0.0);
@@ -136,16 +232,7 @@ cv::Mat_<uchar> PixelSegmentation::get_boundary_pixels() const {
 //            }
 //        }
 //    }
-//    cv::Mat outPreThin;
-//    cv::Mat outPostThin;
-//    cv::cvtColor(image*255, outPreThin, CV_GRAY2BGR);
-//    imwrite("outPreThin.png", outPreThin);
-//    // now thin.
-//    image = thin_boundary_matrix(image);
-//    cv::cvtColor(image*255, outPostThin, CV_GRAY2BGR);
-//    imwrite("outPostThin.png", outPostThin);
-//    return image;
-}
+//}
 
 double PixelSegmentation::boundary_recall(PixelSegmentation& ground_truth, int epsilon) {
     int true_pos = 0, false_neg = 0;
@@ -184,7 +271,11 @@ bool PixelSegment::bbox_intersect(PixelSegment& other) {
 }
 
 bool comparePoints(const cv::Point & a, const cv::Point & b) {
-    return ( a.x<b.x && a.y<b.y );
+    if (a.y == b.y) {
+        return a.x < b.x;
+    } else {
+        return a.y < b.y;
+    }
 }
 
 template <class T>
@@ -206,31 +297,31 @@ namespace std {
 }
 
 intersection_result PixelSegment::intersection_and_diff(PixelSegment& other) {
-    vector<cv::Point> points_intersection;
-    vector<cv::Point> points_outside;
 
     int in = 0, out = 0;
 
-    unordered_set<cv::Point> s(this->points.begin(), this->points.end());
-    for(auto i = other.points.begin(); i != other.points.end(); i++) {
-        if (s.find(*i) != s.end())
-            in++;
-        else
-            out++;
-    }
-    return (intersection_result){.area_out=out, .area_in=in};
+    // for(auto &i: other.points) {
+    //     if (points.find(i) != points.end())
+    //         in++;
+    //     else
+    //         out++;
+    // }
+    in = std::count_if(other.points.cbegin(), other.points.cend(), [&](Point element) {
+        return std::binary_search(points.cbegin(), points.cend(), element, comparePoints);
+    });
+    out = area() - in;
+    return {.area_out=out, .area_in=in};
 }
 
 double PixelSegmentation::undersegmentation_error(PixelSegmentation& ground_truth) {
     int total = 0;
-    for(auto i = ground_truth.segments.begin(); i != ground_truth.segments.end(); i++) {
-        auto gt_seg = *i;
+    for(auto &gt_seg: ground_truth.segments) {
         // find superpixels whose boundary boxes intersect...
-        for(auto j = this->segments.begin(); j != this->segments.end(); j++) {
-            auto this_seg = *j;
-            if (!this_seg.bbox_intersect(gt_seg)) {
+        for(auto &this_seg: segments) {
+            if (!gt_seg.bbox_intersect(this_seg)) {
                 continue; 
             }
+            
             intersection_result result = this_seg.intersection_and_diff(gt_seg);
             if(result.area_in) {
                 total += min(result.area_in, result.area_out);
@@ -309,46 +400,37 @@ void PixelSegmentation::compute_mean(cv::Mat& image, cv::Mat& output) {
 }
 
 double PixelSegmentation::reconstruction_error(const cv::Mat& image) {
-    cv::Mat greyscale_image;
-    cv::cvtColor(image, greyscale_image, CV_BGR2GRAY);
-
-    std::vector<double> colours;
+    auto lab = convert_rgb_to_lab(image);
+    
+    vector<Vec3d> means = {};
 
     // compute the average colour for each face.
-    for(int label=1; label <= this->number_segments(); ++label) {
-        int pixel_count = 0;
-        double sum = 0;
-        for(int p_y = 0; p_y < greyscale_image.rows; ++p_y) {
-            const uchar* Mi = greyscale_image.ptr(p_y);
-            for(int p_x = 0; p_x < greyscale_image.cols; ++p_x) {
-                if(this->segmentation_data.at<int32_t>(p_y, p_x) == label) {
-                    ++pixel_count;
-                    sum += Mi[p_x];
-                }
-            }
-        } 
-        colours.push_back((sum/255)/pixel_count);
+    for(auto &segment: segments) {
+        Vec3d mean = {0,0,0};
+        for(auto &p: segment.points) {
+            mean += lab(p);
+        }
+        mean /= segment.area();
+        means.push_back(mean);
     }
-
+    
     double total_error = 0;
 
 
-    for(int p_y = 0; p_y < greyscale_image.rows; ++p_y) {
-        const uchar* Mi = greyscale_image.ptr(p_y);
-        for(int p_x = 0; p_x < greyscale_image.cols; ++p_x) { 
-            // pixel error = intensity(p) - ∑(face colours weighted by area of intersection)
-            double pixel_error = (double)Mi[p_x]/255;
-            // for a pixel-based segmentation, rather than loop over faces, just get the label at this index.
+    for(int p_y = 0; p_y < lab.rows; ++p_y) {
+        auto Mi = lab[p_y];
+        for(int p_x = 0; p_x < lab.cols; ++p_x) {
             int label = this->segmentation_data.at<int>(p_y, p_x);
-            pixel_error -= colours[label-1];
+            Vec3d mean = means[label-1];
+            Vec3d err = Mi[p_x] - mean;
+            err = err.mul(err);
 
             //std::cout << pixel_error << std::endl;
-            pixel_error = std::pow(pixel_error, 2);
-            total_error += pixel_error;
+            total_error += err[0] + err[1] + err[2];
         }
     }
 
-    return total_error / image.total();
+    return total_error;
 }
 
 unsigned long PixelSegmentation::number_segments() {

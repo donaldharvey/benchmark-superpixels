@@ -15,6 +15,6 @@ PixelSegmentation run_coarsetofine(cv::Mat& image, int num_superpixels) {
     output.convertTo(labels, CV_32S);
     labels += 1;
     
-    Mat_<uchar> contours = generate_boundaries(labels);
+    Mat_<uchar> contours = generate_boundary_mat(labels);
     return PixelSegmentation(labels, contours);
 }

@@ -18,7 +18,7 @@
 using namespace cv;
 #define NR_ITERATIONS 10
 
-PixelSegmentation run_slic(Mat& image, int target_superpixel_number, int m);
+Mat_<int32_t> run_slic(Mat& image, int target_superpixel_number, int m);
 
 
 #endif /* donald_slic_h */

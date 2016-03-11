@@ -185,7 +185,7 @@ Mat enforce_connectivity(Mat& clusters, int number_centers) {
     return new_clusters;
 }
 
-PixelSegmentation run_slic(Mat& image, int target_superpixel_number, int m) {
+Mat_<int32_t> run_slic(Mat& image, int target_superpixel_number, int m) {
     Mat lab_image;
     cvtColor(image, lab_image, CV_BGR2Lab);
     
@@ -207,10 +207,7 @@ PixelSegmentation run_slic(Mat& image, int target_superpixel_number, int m) {
 //    std::cout << clusters;
     
     Mat_<int32_t> labels = enforce_connectivity(clusters, number_centers) + 1;
-//        std::cout << labels;
-    Mat_<uchar> boundaries = generate_boundaries(labels);
-//        std::cout << boundaries;
-    return PixelSegmentation(labels, boundaries);
+    return labels;
 
 }
 

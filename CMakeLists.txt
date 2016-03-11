@@ -5,7 +5,7 @@ project("benchmark-superpixels")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -O3 -msse4.2 ")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Ofast -march=native")
 
 find_package(OpenCV REQUIRED)
 find_package(Boost COMPONENTS filesystem program_options system REQUIRED)
@@ -20,8 +20,12 @@ add_executable(run-slic ${SOURCE_FILES} ${HEADER_FILES} src/run-donald-slic.cpp 
 add_executable(run-seeds ${SOURCE_FILES} ${HEADER_FILES} src/run-seeds.cpp)
 add_executable(run-coarsetofine ${SOURCE_FILES} ${HEADER_FILES} src/run-coarsetofine.cpp)
 
+add_executable(test-boundary-gen ${SOURCE_FILES} ${HEADER_FILES} src/test-boundary-gen.cpp)
+
 target_link_libraries(benchmark-single ${OpenCV_LIBS})
 target_link_libraries(run-slic ${OpenCV_LIBS})
 target_link_libraries(run-seeds ${OpenCV_LIBS})
 target_link_libraries(run-coarsetofine ${OpenCV_LIBS})
+target_link_libraries(test-boundary-gen ${OpenCV_LIBS})
+
 target_link_libraries(benchmark-single ${Boost_LIBRARIES})

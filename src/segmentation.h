@@ -48,6 +48,7 @@ class PixelSegment {
 
 class PixelSegmentation : public Segmentation {
     public:
+        static PixelSegmentation load_from_png(string& filename);
         static PixelSegmentation load_from_file(ifstream& file);
         void output_to_file(ofstream& out_file);
         double reconstruction_error(const cv::Mat& image);
@@ -56,6 +57,7 @@ class PixelSegmentation : public Segmentation {
         double boundary_recall(PixelSegmentation& ground_truth, int epsilon);
         double undersegmentation_error(PixelSegmentation& ground_truth);
         double achievable_segmentation_accuracy(PixelSegmentation& ground_truth);
+        const inline int label_at(int i, int j);
         cv::Mat_<uchar> get_boundary_pixels() const;
         void initialise_segments();
         void compute_mean(cv::Mat& image, cv::Mat& output);
