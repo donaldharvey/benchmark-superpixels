@@ -133,7 +133,7 @@ void PixelSegmentation::initialise_segments() {
 
 PixelSegmentation PixelSegmentation::load_from_png(string& path) {
     // format: two int32s specifying width and height, followed by w*h int32s.
-    cv::Mat input = cv::imread(path, CV_LOAD_IMAGE_GRAYSCALE) + 1;
+    cv::Mat input = cv::imread(path, CV_LOAD_IMAGE_GRAYSCALE);
     cv::Mat_<int32_t> seg_mat = input;
     cv::Mat_<uchar> b = generate_boundary_mat(seg_mat);
     b = thin_boundary_matrix(b);

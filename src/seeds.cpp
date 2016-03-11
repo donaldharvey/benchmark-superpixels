@@ -8,7 +8,7 @@
 
 using namespace cv;
 
-PixelSegmentation run_seeds(cv::Mat& image, int num_superpixels) {
+Mat_<int32_t> run_seeds(cv::Mat& image, int num_superpixels, int num_levels) {
     cv::Mat lab_image;
     cv::cvtColor(image, lab_image, CV_BGR2Lab);
     
@@ -43,7 +43,7 @@ PixelSegmentation run_seeds(cv::Mat& image, int num_superpixels) {
     //     }
     // }
     
-    auto seeds = cv::ximgproc::createSuperpixelSEEDS(width, height, 3, num_superpixels, 4, 2, 5, false);
+    auto seeds = cv::ximgproc::createSuperpixelSEEDS(width, height, 3, num_superpixels, num_levels, 2, 5, false);
     
     //    auto seeds = createSuperpixelSEEDS(w, h, 3, atoi(argv[2]));
     seeds->iterate(lab_image, 4);
@@ -52,8 +52,7 @@ PixelSegmentation run_seeds(cv::Mat& image, int num_superpixels) {
     seeds->getLabels(seedsLabels);
     seedsLabels += 1;
     
-    Mat_<uchar> seedsContours;
-    seeds->getLabelContourMask(seedsContours);
-    seedsContours /= 255;
-    return PixelSegmentation(seedsLabels, seedsContours);
+    cout << seeds->getNumberOfSuperpixels() << endl;
+    
+    return seedsLabels;
 }

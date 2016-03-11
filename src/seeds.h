@@ -19,6 +19,6 @@
 
 using namespace cv;
 
-PixelSegmentation run_seeds(cv::Mat& image, int num_superpixels);
+Mat_<int32_t> run_seeds(cv::Mat& image, int num_superpixels, int num_levels=4);
 
 #endif /* run_seeds_h */
