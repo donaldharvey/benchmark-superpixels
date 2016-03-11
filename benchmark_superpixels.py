@@ -48,7 +48,7 @@ def benchmark_superpixels(bsds_path, algorithm, input, numbers_superpixels, outp
         else:
             output_filename = P(output) / (P(input).stem + '.tsv')
         with output_filename.open('w') as f:
-            w = DictWriter(f, delimiter='\t', fieldnames='name number_segments br2 br1 br0 asa compactness reconstruction_error ue moves energy iters'.split(' '))
+            w = DictWriter(f, delimiter='\t', fieldnames='name number_segments br2 br1 br0 asa compactness reconstruction_error cue sue moves energy iters'.split(' '))
             w.writeheader()
             total = len(args)
             for i, a in enumerate(args):
