@@ -46,7 +46,8 @@ struct bench_res {
     double asa;
     double compactness;
     double reconstruction_error;
-    double ue;
+    double cue;
+    double sue;
 };
 
 bench_res run_bench(PixelSegmentation& seg, cv::Mat& image, string& gt_path) {
@@ -57,8 +58,10 @@ bench_res run_bench(PixelSegmentation& seg, cv::Mat& image, string& gt_path) {
     double br2 = seg.boundary_recall(gt, 2);
     double br1 = seg.boundary_recall(gt, 1);
     double br0 = seg.boundary_recall(gt, 0);
-    double asa = seg.achievable_segmentation_accuracy(gt);
-    double ue = seg.undersegmentation_error(gt);
+//    double asa = seg.achievable_segmentation_accuracy(gt);
+//    double cue = seg.corrected_undersegmentation_error(gt);
+//    double sue = seg.symmetric_undersegmentation_error(gt);
+    double asa, cue, sue = 0;
     
     bench_res res = {
         .number_segments = seg.number_segments(), 
@@ -68,7 +71,8 @@ bench_res run_bench(PixelSegmentation& seg, cv::Mat& image, string& gt_path) {
         .asa = asa,
         .compactness = seg.compactness(),
         .reconstruction_error = seg.reconstruction_error(image),
-        .ue = ue
+        .cue = cue,
+        .sue = sue,
     };
 
     return res;
@@ -127,6 +131,7 @@ int main(int ac, char* av[]) {
     << "    \"asa\": " << res.asa << ",\n"
     << "    \"compactness\": " << res.compactness << ",\n"
     << "    \"reconstruction_error\": " << res.reconstruction_error << ",\n"
-    << "    \"ue\": " << res.ue << "\n"
+    << "    \"sue\": " << res.sue << "\n"
+    << "    \"cue\": " << res.cue << "\n"
     << "}\n";
 }

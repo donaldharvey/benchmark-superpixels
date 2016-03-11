@@ -313,8 +313,8 @@ intersection_result PixelSegment::intersection_and_diff(PixelSegment& other) {
     return {.area_out=out, .area_in=in};
 }
 
-double PixelSegmentation::undersegmentation_error(PixelSegmentation& ground_truth) {
-    int total = 0;
+double PixelSegmentation::symmetric_undersegmentation_error(PixelSegmentation& ground_truth) {
+    double total = 0;
     for(auto &gt_seg: ground_truth.segments) {
         // find superpixels whose boundary boxes intersect...
         for(auto &this_seg: segments) {
@@ -328,11 +328,29 @@ double PixelSegmentation::undersegmentation_error(PixelSegmentation& ground_trut
             }
         }
     }
-    return (double)total / (this->width * this->height);
+    return total / (this->width * this->height);
+}
+
+double PixelSegmentation::corrected_undersegmentation_error(PixelSegmentation& ground_truth) {
+    double total = 0;
+    for (auto &seg: segments) {
+        int best_gt_overlap = 0;
+        for (auto &gt_seg: ground_truth.segments) {
+            if (!gt_seg.bbox_intersect(seg)) {
+                continue;
+            }
+            auto result = seg.intersection_and_diff(gt_seg);
+            if(result.area_in > best_gt_overlap) {
+                best_gt_overlap = result.area_in;
+            }
+        }
+        total += abs(seg.area() - best_gt_overlap);
+    }
+    return total / (this->width * this->height);
 }
 
 double PixelSegment::perimeter() {
-    int total = 0;
+    double total = 0;
     auto len = this->points.size();
     for(int i = 0; i < len; ++i) {
         // is it a boundary point?
