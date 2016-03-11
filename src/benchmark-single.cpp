@@ -61,7 +61,7 @@ bench_res run_bench(PixelSegmentation& seg, cv::Mat& image, string& gt_path) {
 //    double asa = seg.achievable_segmentation_accuracy(gt);
 //    double cue = seg.corrected_undersegmentation_error(gt);
 //    double sue = seg.symmetric_undersegmentation_error(gt);
-    double asa, cue, sue = 0;
+    double asa = 0, cue = 0, sue = 0;
     
     bench_res res = {
         .number_segments = seg.number_segments(), 
