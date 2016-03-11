@@ -52,8 +52,8 @@ def benchmark_superpixels(bsds_path, algorithm, input, numbers_superpixels, outp
             w.writeheader()
             total = len(args)
             for i, a in enumerate(args):
-                log_path = a[0][3].parent / a[0][3].name.replace('.png', '.log.gz')
-                log_res = read_log(str(log_path))
+                # log_path = a[0][3].parent / a[0][3].name.replace('.png', '.log.gz')
+                # log_res = read_log(str(log_path))
 
                 print("Running on {} ({}%)".format(a[0][1].name, round(i*100/total, 2)))
                 cmds = [sh.Command('./benchmark-single')(*the_args, _bg=True) for the_args in a]
@@ -65,7 +65,7 @@ def benchmark_superpixels(bsds_path, algorithm, input, numbers_superpixels, outp
                 for c in cmds:
                     res = json.loads(str(c))
                     res['name'] = a[0][1].name
-                    res.update(log_res)
+                    # res.update(log_res)
 
                     w.writerow(res)
                     f.flush()
