@@ -8,7 +8,7 @@ import pandas
 
 def read_log(p):
     df = pandas.read_csv(p, sep='\t', header=None)
-    return {'moves': df.iloc[-1].name, 'energy': df.iloc[-1][0], 'iters': df.iloc[-1][2]}
+    return {'moves': df.iloc[-1][1], 'energy': df.iloc[-1][0], 'iters': df.iloc[-1][2]}
 
 @click.command()
 @click.option('--bsds-path', type=click.Path(exists=True, file_okay=False))
