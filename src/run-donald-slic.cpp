@@ -1,5 +1,6 @@
 #include "donald-slic.h"
 #include <iostream>
+#include <boost/filesystem.hpp>
 
 using namespace cv;
 
@@ -20,7 +21,8 @@ std::string get_base_filename(const char* filename)
 int main(int argc, char *argv[]) {
     using namespace std;
     // Load the image and convert to Lab colour space.
-    string root_name = get_base_filename(argv[1]);
+    boost::filesystem::path p(argv[1]);
+    string root_name = p.stem().string();
     
     Mat image;
     image = imread(argv[1], CV_LOAD_IMAGE_COLOR);
@@ -29,5 +31,5 @@ int main(int argc, char *argv[]) {
     cvtColor(image, lab_image, CV_BGR2Lab);
     
     auto res = run_slic(image, atoi(argv[2]), atoi(argv[3]));
-    imwrite(root_name + "_means_" + argv[2] + "_" + argv[3] + ".png", res);
+    imwrite(root_name + ".png", res);
 }
