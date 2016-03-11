@@ -27,3 +27,5 @@ target_link_libraries(run-seeds ${OpenCV_LIBS})
 target_link_libraries(run-coarsetofine ${OpenCV_LIBS})
 
 target_link_libraries(benchmark-single ${Boost_LIBRARIES})
+target_link_libraries(run-slic ${Boost_LIBRARIES})
+target_link_libraries(run-seeds ${Boost_LIBRARIES})
