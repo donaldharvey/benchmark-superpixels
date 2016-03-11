@@ -131,7 +131,7 @@ int main(int ac, char* av[]) {
     << "    \"asa\": " << res.asa << ",\n"
     << "    \"compactness\": " << res.compactness << ",\n"
     << "    \"reconstruction_error\": " << res.reconstruction_error << ",\n"
-    << "    \"sue\": " << res.sue << "\n"
+    << "    \"sue\": " << res.sue << ",\n"
     << "    \"cue\": " << res.cue << "\n"
     << "}\n";
 }
