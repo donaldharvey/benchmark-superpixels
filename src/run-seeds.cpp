@@ -23,8 +23,8 @@ int main(int argc, char *argv[]) {
     image = imread(argv[1], CV_LOAD_IMAGE_COLOR);
 
     auto res = run_seeds(image, atoi(argv[2]), atoi(argv[3]));
-
-
-    imwrite(root_name + ".png", res);
+    Mat out_mat;
+    res.convertTo(out_mat, CV_16U);
+    imwrite(root_name + ".png", out_mat);
     return 0;
 }

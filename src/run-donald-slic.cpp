@@ -26,10 +26,8 @@ int main(int argc, char *argv[]) {
     
     Mat image;
     image = imread(argv[1], CV_LOAD_IMAGE_COLOR);
-    
-    Mat lab_image;
-    cvtColor(image, lab_image, CV_BGR2Lab);
-    
+    Mat out_mat;
     auto res = run_slic(image, atoi(argv[2]), atoi(argv[3]));
-    imwrite(root_name + ".png", res);
+    res.convertTo(out_mat, CV_16U);
+    imwrite(root_name + ".png", out_mat);
 }
