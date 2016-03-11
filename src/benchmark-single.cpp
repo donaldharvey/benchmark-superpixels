@@ -111,7 +111,7 @@ int main(int ac, char* av[]) {
 
 
     cv::Mat image = cv::imread(vm["input-image"].as<string>(), CV_LOAD_IMAGE_COLOR);
-    PixelSegmentation seg = load_from_png ? PixelSegmentation::load_from_png(png_file);
+    PixelSegmentation seg = PixelSegmentation::load_from_png(png_file);
 
     string gt_path = vm["ground-truth"].as<string>();
 
