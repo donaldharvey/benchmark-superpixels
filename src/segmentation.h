@@ -57,6 +57,7 @@ class PixelSegmentation : public Segmentation {
         double boundary_recall(PixelSegmentation& ground_truth);
         double boundary_recall(PixelSegmentation& ground_truth, int epsilon);
         intersection_metrics_result intersection_based_metrics(PixelSegmentation& ground_truth);
+        double normalised_reconstruction_error(double recon_error);
     
         const inline int label_at(int i, int j);
         cv::Mat_<uchar> get_boundary_pixels() const;

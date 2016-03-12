@@ -46,6 +46,7 @@ struct bench_res {
     double asa;
     double compactness;
     double reconstruction_error;
+    double nre;
     double cue;
     double sue;
 };
@@ -65,6 +66,8 @@ bench_res run_bench(PixelSegmentation& seg, cv::Mat& image, string& gt_path) {
 //    double sue = seg.symmetric_undersegmentation_error(gt);
     // double asa = 0, cue = 0, sue = 0;
     
+    double re = seg.reconstruction_error(image);
+    
     bench_res res = {
         .number_segments = seg.number_segments(), 
         .br2 = br2,
@@ -72,7 +75,8 @@ bench_res run_bench(PixelSegmentation& seg, cv::Mat& image, string& gt_path) {
         .br0 = br0,
         .asa = result.asa,
         .compactness = seg.compactness(),
-        .reconstruction_error = seg.reconstruction_error(image),
+        .reconstruction_error = re,
+        .nre = seg.normalised_reconstruction_error(re),
         .cue = result.cue,
         .sue = result.sue,
     };
@@ -133,6 +137,7 @@ int main(int ac, char* av[]) {
     << "    \"asa\": " << res.asa << ",\n"
     << "    \"compactness\": " << res.compactness << ",\n"
     << "    \"reconstruction_error\": " << res.reconstruction_error << ",\n"
+    << "    \"nre\": " << res.nre << ",\n"
     << "    \"sue\": " << res.sue << ",\n"
     << "    \"cue\": " << res.cue << "\n"
     << "}\n";

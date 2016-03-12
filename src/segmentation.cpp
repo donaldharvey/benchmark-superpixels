@@ -470,7 +470,12 @@ double PixelSegmentation::reconstruction_error(const cv::Mat& image) {
         }
     }
 
-    return total_error / (this->width * this->height);
+    return total_error;
+}
+
+double PixelSegmentation::normalised_reconstruction_error(double recon_error) {
+    recon_error /= (3 * width * height);
+    return sqrt(recon_error) / 100.0;
 }
 
 unsigned long PixelSegmentation::number_segments() {
