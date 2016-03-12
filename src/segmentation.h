@@ -23,11 +23,6 @@ class Segmentation {
         int width, height;
 };
 
-struct intersection_result {
-    int area_in;
-    int area_out;
-};
-
 class PixelSegmentation;
 
 class PixelSegment {
@@ -39,11 +34,17 @@ class PixelSegment {
         int y1;
         int y2;
         vector<cv::Point> points;
-        double perimeter();
-        double area();
+        int perimeter();
+        int area();
         bool bbox_intersect(PixelSegment& other);
-        intersection_result intersection_and_diff(PixelSegment& other);
+        int intersection(PixelSegment& other);
         PixelSegment(PixelSegmentation& seg);
+};
+
+struct intersection_metrics_result {
+    double asa;
+    double cue;
+    double sue;
 };
 
 class PixelSegmentation : public Segmentation {
@@ -55,9 +56,7 @@ class PixelSegmentation : public Segmentation {
         double compactness();
         double boundary_recall(PixelSegmentation& ground_truth);
         double boundary_recall(PixelSegmentation& ground_truth, int epsilon);
-        double symmetric_undersegmentation_error(PixelSegmentation& ground_truth);
-        double corrected_undersegmentation_error(PixelSegmentation& ground_truth);
-        double achievable_segmentation_accuracy(PixelSegmentation& ground_truth);
+        intersection_metrics_result intersection_based_metrics(PixelSegmentation& ground_truth);
     
         const inline int label_at(int i, int j);
         cv::Mat_<uchar> get_boundary_pixels() const;

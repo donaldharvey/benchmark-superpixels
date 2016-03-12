@@ -271,7 +271,7 @@ bool PixelSegment::bbox_intersect(PixelSegment& other) {
     return (this->x1 <= other.x2 and this->x2 >= other.x1 and this->y1 <= other.y2 and this->y2 >= other.y1);
 }
 
-bool comparePoints(const cv::Point & a, const cv::Point & b) {
+inline bool comparePoints(const cv::Point & a, const cv::Point & b) {
     if (a.y == b.y) {
         return a.x < b.x;
     } else {
@@ -297,61 +297,56 @@ namespace std {
     };
 }
 
-intersection_result PixelSegment::intersection_and_diff(PixelSegment& other) {
-
-    int in = 0, out = 0;
-
+int PixelSegment::intersection(PixelSegment& other) {
     // for(auto &i: other.points) {
     //     if (points.find(i) != points.end())
     //         in++;
     //     else
     //         out++;
     // }
-    in = std::count_if(other.points.cbegin(), other.points.cend(), [&](Point element) {
+    return std::count_if(other.points.cbegin(), other.points.cend(), [&](Point element) {
         return std::binary_search(points.cbegin(), points.cend(), element, comparePoints);
     });
-    out = area() - in;
-    return {.area_out=out, .area_in=in};
 }
 
-double PixelSegmentation::symmetric_undersegmentation_error(PixelSegmentation& ground_truth) {
-    double total = 0;
-    for(auto &gt_seg: ground_truth.segments) {
-        // find superpixels whose boundary boxes intersect...
-        for(auto &this_seg: segments) {
-            if (!gt_seg.bbox_intersect(this_seg)) {
-                continue; 
-            }
-            
-            intersection_result result = this_seg.intersection_and_diff(gt_seg);
-            if(result.area_in) {
-                total += min(result.area_in, result.area_out);
-            }
-        }
-    }
-    return total / (this->width * this->height);
-}
+//double PixelSegmentation::symmetric_undersegmentation_error(PixelSegmentation& ground_truth) {
+//    double total = 0;
+//    for(auto &gt_seg: ground_truth.segments) {
+//        // find superpixels whose boundary boxes intersect...
+//        for(auto &this_seg: segments) {
+//            if (!gt_seg.bbox_intersect(this_seg)) {
+//                continue; 
+//            }
+//            
+//            intersection_result result = this_seg.intersection_and_diff(gt_seg);
+//            if(result.area_in) {
+//                total += min(result.area_in, result.area_out);
+//            }
+//        }
+//    }
+//    return total / (this->width * this->height);
+//}
+//
+//double PixelSegmentation::corrected_undersegmentation_error(PixelSegmentation& ground_truth) {
+//    double total = 0;
+//    for (auto &seg: segments) {
+//        int best_gt_overlap = 0;
+//        for (auto &gt_seg: ground_truth.segments) {
+//            if (!gt_seg.bbox_intersect(seg)) {
+//                continue;
+//            }
+//            auto result = seg.intersection_and_diff(gt_seg);
+//            if(result.area_in > best_gt_overlap) {
+//                best_gt_overlap = result.area_in;
+//            }
+//        }
+//        total += abs(seg.area() - best_gt_overlap);
+//    }
+//    return total / (this->width * this->height);
+//}
 
-double PixelSegmentation::corrected_undersegmentation_error(PixelSegmentation& ground_truth) {
-    double total = 0;
-    for (auto &seg: segments) {
-        int best_gt_overlap = 0;
-        for (auto &gt_seg: ground_truth.segments) {
-            if (!gt_seg.bbox_intersect(seg)) {
-                continue;
-            }
-            auto result = seg.intersection_and_diff(gt_seg);
-            if(result.area_in > best_gt_overlap) {
-                best_gt_overlap = result.area_in;
-            }
-        }
-        total += abs(seg.area() - best_gt_overlap);
-    }
-    return total / (this->width * this->height);
-}
-
-double PixelSegment::perimeter() {
-    double total = 0;
+int PixelSegment::perimeter() {
+    int total = 0;
     auto len = this->points.size();
     for(int i = 0; i < len; ++i) {
         // is it a boundary point?
@@ -367,30 +362,56 @@ double PixelSegment::perimeter() {
             }
         }
     }
-    return (double)total;
+    return total;
 }
 
-double PixelSegment::area() { return this->points.size(); }
+int PixelSegment::area() { return this->points.size(); }
 
-double PixelSegmentation::achievable_segmentation_accuracy(PixelSegmentation& ground_truth) {
-    int total = 0;
-    for(auto i = this->segments.begin(); i != this->segments.end(); i++) {
-        // find intersecting gts and add the largest interesection
-        PixelSegment this_seg = *i;
-
-        int max = 0;
-        for(auto j = ground_truth.segments.begin(); j != ground_truth.segments.end(); j++) {
-            PixelSegment gt_seg = *j;
-            if (!this_seg.bbox_intersect(gt_seg)) { continue; }
-            intersection_result result = this_seg.intersection_and_diff(gt_seg);
-            if (result.area_in > max) {
-                max = result.area_in;
+intersection_metrics_result PixelSegmentation::intersection_based_metrics(PixelSegmentation& ground_truth) {
+    int asa_total = 0;
+    int cue_total = 0;
+    int sue_total = 0;
+    for (auto &seg: segments) {
+        int best_gt_overlap = 0;
+        for (auto &gt_seg: ground_truth.segments) {
+            if (!gt_seg.bbox_intersect(seg)) {
+                continue;
             }
+            int intersection_area = seg.intersection(gt_seg);
+            if(intersection_area > best_gt_overlap) {
+                best_gt_overlap = intersection_area;
+            }
+            sue_total += std::min(intersection_area, seg.area() - intersection_area);
         }
-        total += max;
+        cue_total += abs(seg.area() - best_gt_overlap);
+        asa_total += best_gt_overlap;
     }
-    return (double)total / (this->width * this->height);
+    return {
+        .asa = (double)asa_total / (this->width * this->height),
+        .cue = (double)cue_total / (this->width * this->height),
+        .sue = (double)sue_total / (this->width * this->height)
+    };
 }
+
+//double PixelSegmentation::achievable_segmentation_accuracy(PixelSegmentation& ground_truth) {
+//    int total = 0;
+//    for(auto i = this->segments.begin(); i != this->segments.end(); i++) {
+//        // find intersecting gts and add the largest interesection
+//        PixelSegment this_seg = *i;
+//
+//        int max = 0;
+//        for(auto j = ground_truth.segments.begin(); j != ground_truth.segments.end(); j++) {
+//            PixelSegment gt_seg = *j;
+//            if (!this_seg.bbox_intersect(gt_seg)) { continue; }
+//            intersection_result result = this_seg.intersection_and_diff(gt_seg);
+//            if (result.area_in > max) {
+//                max = result.area_in;
+//            }
+//        }
+//        total += max;
+//    }
+//    return (double)total / (this->width * this->height);
+//}
 
 double PixelSegmentation::compactness() {
     double CO = 0;
@@ -449,7 +470,7 @@ double PixelSegmentation::reconstruction_error(const cv::Mat& image) {
         }
     }
 
-    return total_error;
+    return total_error / (this->width * this->height);
 }
 
 unsigned long PixelSegmentation::number_segments() {

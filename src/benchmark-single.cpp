@@ -54,25 +54,27 @@ bench_res run_bench(PixelSegmentation& seg, cv::Mat& image, string& gt_path) {
     ifstream gtfile;
     gtfile.open(gt_path);
     PixelSegmentation gt = PixelSegmentation::load_from_file(gtfile);
+    
     //gtfile.close();
     double br2 = seg.boundary_recall(gt, 2);
     double br1 = seg.boundary_recall(gt, 1);
     double br0 = seg.boundary_recall(gt, 0);
+    auto result = seg.intersection_based_metrics(gt);
 //    double asa = seg.achievable_segmentation_accuracy(gt);
 //    double cue = seg.corrected_undersegmentation_error(gt);
 //    double sue = seg.symmetric_undersegmentation_error(gt);
-    double asa = 0, cue = 0, sue = 0;
+    // double asa = 0, cue = 0, sue = 0;
     
     bench_res res = {
         .number_segments = seg.number_segments(), 
         .br2 = br2,
         .br1 = br1,
         .br0 = br0,
-        .asa = asa,
+        .asa = result.asa,
         .compactness = seg.compactness(),
         .reconstruction_error = seg.reconstruction_error(image),
-        .cue = cue,
-        .sue = sue,
+        .cue = result.cue,
+        .sue = result.sue,
     };
 
     return res;
