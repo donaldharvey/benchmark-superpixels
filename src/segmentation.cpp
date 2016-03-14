@@ -440,7 +440,8 @@ void PixelSegmentation::compute_mean(cv::Mat& image, cv::Mat& output) {
 }
 
 double PixelSegmentation::reconstruction_error(const cv::Mat& image) {
-    auto lab = convert_rgb_to_lab(image);
+    Mat_<Vec3b> lab;
+    cvtColor(image, lab, CV_BGR2Lab);
     
     vector<Vec3d> means = {};
 
@@ -462,7 +463,7 @@ double PixelSegmentation::reconstruction_error(const cv::Mat& image) {
         for(int p_x = 0; p_x < lab.cols; ++p_x) {
             int label = this->segmentation_data.at<int>(p_y, p_x);
             Vec3d mean = means[label-1];
-            Vec3d err = Mi[p_x] - mean;
+            Vec3d err = Vec3d(Mi[p_x]) - mean;
             err = err.mul(err);
 
             //std::cout << pixel_error << std::endl;
@@ -475,7 +476,7 @@ double PixelSegmentation::reconstruction_error(const cv::Mat& image) {
 
 double PixelSegmentation::normalised_reconstruction_error(double recon_error) {
     recon_error /= (3 * width * height);
-    return sqrt(recon_error) / 100.0;
+    return sqrt(recon_error) / 255.0;
 }
 
 unsigned long PixelSegmentation::number_segments() {

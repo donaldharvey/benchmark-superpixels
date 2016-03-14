@@ -19,12 +19,13 @@ add_executable(benchmark-single ${SOURCE_FILES} ${HEADER_FILES} src/benchmark-si
 add_executable(run-slic ${SOURCE_FILES} ${HEADER_FILES} src/run-donald-slic.cpp )
 add_executable(run-seeds ${SOURCE_FILES} ${HEADER_FILES} src/run-seeds.cpp)
 add_executable(run-coarsetofine ${SOURCE_FILES} ${HEADER_FILES} src/run-coarsetofine.cpp)
-
+add_executable(rms src/segmentation.cpp src/segmentation.h src/rms.cpp src/utils.cpp)
 
 target_link_libraries(benchmark-single ${OpenCV_LIBS})
 target_link_libraries(run-slic ${OpenCV_LIBS})
 target_link_libraries(run-seeds ${OpenCV_LIBS})
 target_link_libraries(run-coarsetofine ${OpenCV_LIBS})
+target_link_libraries(rms ${OpenCV_LIBS})
 
 target_link_libraries(benchmark-single ${Boost_LIBRARIES})
 target_link_libraries(run-slic ${Boost_LIBRARIES})
