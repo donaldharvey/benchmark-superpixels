@@ -67,6 +67,7 @@ class PixelSegmentation : public Segmentation {
         PixelSegmentation(int32_t* data, uchar* b_data, int width, int height);
         PixelSegmentation(cv::Mat_<int32_t>& data, cv::Mat_<uchar>& boundary_data);
         PixelSegmentation();
+    void draw_boundaries(cv::Mat& image, cv::Mat& output, bool thick_line=false, cv::Vec3b colour={0,0,255});
     
         unsigned long number_segments();
     

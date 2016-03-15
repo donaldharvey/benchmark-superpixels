@@ -235,6 +235,58 @@ cv::Mat_<uchar> PixelSegmentation::get_boundary_pixels() const {
 //    }
 //}
 
+void PixelSegmentation::draw_boundaries(Mat& image, Mat& output, bool thick_line, Vec3b colour) {
+    image.copyTo(output);
+    //    Mat1b isBoundary = Mat1b(output.rows, output.cols, 0.0);
+    //    for (int j = 0; j < blocks.rows; j++)
+    //    {
+    //        for (int k = 0; k < blocks.cols; k++)
+    //        {
+    //            if (is_boundary_block_at(Point(k, j))) {
+    ////                cout << blocks(j,k)->get_rect() << endl;
+    //                output(blocks(j,k)->get_rect()) = Vec3b(colour);
+    //            }
+    //        }
+    //    }
+    
+    const int dx8[8] = { -1, -1, 0, 1, 1, 1, 0, -1 };
+    const int dy8[8] = { 0, -1, -1, -1, 0, 1, 1, 1 };
+    
+    auto mask = Mat_<uchar>(output.rows, output.cols, 0.0);
+    
+    for (int j = 0; j < output.rows; j++)
+    {
+        for (int k = 0; k < output.cols; k++)
+        {
+            int neighbors = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                int x = k + dx8[i];
+                int y = j + dy8[i];
+                
+                if( (x >= 0 && x < mask.cols) && (y >= 0 && y < mask.rows) )
+                {
+                    if( segmentation_data[y][x] != segmentation_data[j][k] )
+                    {
+                        if( thick_line || !*mask.ptr(y, x) )
+                            neighbors++;
+                    }
+                }
+            }
+            if( neighbors > 1 )
+                *mask.ptr(j, k) = (uchar)255;
+        }
+    }
+    for (int j = 0; j < output.rows; j++)
+    {
+        for (int k = 0; k < output.cols; k++) {
+            if (mask(j,k))
+                output.at<Vec3b>(j,k) = colour;
+        }
+    }
+}
+
+
 double PixelSegmentation::boundary_recall(PixelSegmentation& ground_truth, int epsilon) {
     int true_pos = 0, false_neg = 0;
     cv::Mat_<uchar> ground_truth_boundaries = ground_truth.get_boundary_pixels();
@@ -423,21 +475,23 @@ double PixelSegmentation::compactness() {
 }
 
 void PixelSegmentation::compute_mean(cv::Mat& image, cv::Mat& output) {
-    vector<cv::Vec3d> means(this->number_segments(), 0.0);
-    for(int p_y = 0; p_y < image.rows; ++p_y) {
-        for(int p_x = 0; p_x < image.cols; ++p_x) {
-            means[this->segmentation_data.at<int32_t>(p_y, p_x) - 1] += image.at<cv::Vec3b>(p_y, p_x);
+    image.copyTo(output);
+    vector<cv::Vec3d> means(segments.size(), 0.0);
+    vector<int> counts(segments.size(), 0);
+    for(int p_y = 0; p_y < segmentation_data.rows; ++p_y) {
+        for(int p_x = 0; p_x < segmentation_data.cols; ++p_x) {
+            means[segmentation_data(p_y, p_x)] += image.at<Vec3b>(p_y, p_x);
+            counts[segmentation_data(p_y, p_x)]++;
         }
     }
     for(int i=0; i<means.size(); ++i) {
-        means[i] /= this->segments[i].area();
+        means[i] /= counts[i];
     }
-    for(int p_y = 0; p_y < image.rows; ++p_y) {
-        for(int p_x = 0; p_x < image.cols; ++p_x) {
-            output.at<cv::Vec3b>(p_y, p_x) = means[this->segmentation_data.at<int32_t>(p_y, p_x) - 1];
+    for(int p_y = 0; p_y < segmentation_data.rows; ++p_y) {
+        for(int p_x = 0; p_x < segmentation_data.cols; ++p_x) {
+            output.at<cv::Vec3b>(p_y, p_x) = means[segmentation_data(p_y, p_x)];
         }
-    }
-}
+    }}
 
 double PixelSegmentation::reconstruction_error(const cv::Mat& image) {
     Mat_<Vec3b> lab;
